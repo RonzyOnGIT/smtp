@@ -3,11 +3,14 @@ from socket import *
 import sys
 
 
-msg = "\r\n I love computer networks!" 
-endmsg = "\r\n.\r\n" 
+msg = "I love computer networks!\r\n" 
+endmsg = ".\r\n" 
 
-mailserver = ""
+
+mailserver = input('Enter server IP: ')
 mailPort = 1025
+
+print('\n')
 
 # create client socket
 clientSocket = socket(AF_INET, SOCK_STREAM)
@@ -26,40 +29,69 @@ if recv[:3] != '220':
 heloCommand = 'HELO client\r\n'
 clientSocket.send(heloCommand.encode())
 
-recv1 = clientSocket.recv(1024).encode()
-print(recv1)
-if (recv1[:3] != '250'):
+heloCommandResponse = clientSocket.recv(1024).decode()
+
+print(heloCommandResponse)
+
+if (heloCommandResponse[:3] != '250'):
     print('250 reply not received from server.')
+    clientSocket.close()
     sys.exit()
 
-mailCommand = "MAIL FROM: nick@gmail.com"
+mailCommand = 'MAIL FROM: <nick@gmail.com>\r\n'
 clientSocket.send(mailCommand.encode())
 
-recv2 = clientSocket.recv(1024).encode()
-print(recv2)
-if (recv2[:3] != '250'):
+mailCommandResponse = clientSocket.recv(1024).decode()
+
+print(mailCommandResponse)
+
+if (mailCommandResponse[:3] != '250'):
     print("was not able to verify client")
+    clientSocket.close()
     sys.exit()
 
-rcptMessage = 'RCPT TO: ' + 'bob@dummyserver.com'
+rcptMessage = 'RCPT TO: ' + '<bob@dummyserver.com>\r\n'
+clientSocket.send(rcptMessage.encode())
 
-recv3 = clientSocket.recv(1024).encode()
-print(recv3)
-if (recv3[:3] != '250'):
+rcptMessageResponse = clientSocket.recv(1024).decode()
+
+print(rcptMessageResponse)
+if (rcptMessageResponse[:3] != '250'):
+    print('was not able to find recipient')
+    clientSocket.close()
     sys.exit()
 
-dataMessage = "DATA"
+dataMessage = "DATA\r\n"
+clientSocket.send(dataMessage.encode())
 
+dataMessageResponse = clientSocket.recv(1024).decode()
 
-# # Send DATA command and print server response.  
-# # Fill in start 
-# # Fill in end 
-# # Send message data. 
-# # Fill in start 
-# # Fill in end 
-# # Message ends with a single period. 
-# # Fill in start 
-# # Fill in end 
-# # Send QUIT command and get server response. 
-# # Fill in start 
-# # Fill in end 
+if (dataMessageResponse[:3] != "354"):
+    print('Server did not response with 354 for body')
+    clientSocket.close()
+    sys.exit()
+
+# add header stuff like subject
+clientSocket.send(msg.encode())
+clientSocket.send(endmsg.encode())
+
+recv4 = clientSocket.recv(1024).decode()
+
+if (recv4[:3] != '250'):
+    print('message not accepted for delivery by server')
+    clientSocket.close()
+    sys.exit()
+
+quitMessage = 'QUIT\r\n'
+clientSocket.send(quitMessage.encode())
+
+quitMessageResponse = clientSocket.recv(1024).decode()
+
+if (quitMessageResponse[:3] != '221'):
+    print('server did not send 221 response for quit')
+    clientSocket.close()
+    sys.exit()
+
+print('successful smtp interaction!')
+clientSocket.close()
+
