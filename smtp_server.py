@@ -2,7 +2,7 @@
 # I plan to add threading in the future to allow for more than one client at a time
 
 from socket import *
-import sys
+from server_utils import check_for_quit
 
 serverPort = 1025
 
@@ -15,8 +15,8 @@ serverSocket.listen(1)
 
 print("Server ready for requests")
 
-# have to add functionality so that if client sends 'QUIT' at any point, break close connection
 while True:
+    
     # after this line, succesfully established TCP connection with client, send 220 message
     connectionSocket, userAddress = serverSocket.accept()
 
@@ -27,7 +27,10 @@ while True:
     # Wait for client to send HELO
     clientHelo = connectionSocket.recv(1024).decode()
 
-    if (clientHelo[:4] != 'HELO'):
+    # checks to see if client sent QUIT code to close connection
+    if (check_for_quit(clientHelo, connectionSocket)):
+        continue
+    elif (clientHelo[:4] != 'HELO'):
         connectionSocket.send('500 error'.encode())
         connectionSocket.close()
         continue
@@ -37,12 +40,13 @@ while True:
 
     clientMailFrom = connectionSocket.recv(1024).decode()
 
-    if (clientMailFrom[:9] != 'MAIL FROM'):
+    if (check_for_quit(clientMailFrom, connectionSocket)):
+        continue
+    elif (clientMailFrom[:9] != 'MAIL FROM'):
         connectionSocket.send('no mail from'.encode())
         connectionSocket.close()
         continue
     
-
     # verify client
     closingBracketIndex = clientMailFrom.find('>')
     clientEmail = clientMailFrom[12:closingBracketIndex]
@@ -53,7 +57,9 @@ while True:
     # Destination email (rcpt)
     clientRcpt = connectionSocket.recv(1024).decode()
 
-    if (clientRcpt[:7] != 'RCPT TO'):
+    if (check_for_quit(clientRcpt, connectionSocket)):
+        continue
+    elif (clientRcpt[:7] != 'RCPT TO'):
         connectionSocket.send('500 error'.encode())
         connectionSocket.close()
         continue
@@ -66,6 +72,8 @@ while True:
 
     clientDataResponse = connectionSocket.recv(1024).decode()
 
+    if (check_for_quit(clientDataResponse, connectionSocket)):
+        continue
     if (clientDataResponse.strip() != 'DATA'):
         connectionSocket.send('500 error'.encode())
         connectionSocket.close()
@@ -74,8 +82,8 @@ while True:
     clientDataMessage = '354 Enter mail, end with "." on a line by itself\r\n'
     connectionSocket.send(clientDataMessage.encode())
 
-
     clientEmailContent = ''
+    
     while True:
         clientDataBodyResponse = connectionSocket.recv(1024).decode()
         if (clientDataBodyResponse == '.\r\n'):
