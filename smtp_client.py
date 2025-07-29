@@ -1,14 +1,16 @@
 from socket import *
-
+from client_utils import prompt_for_quit
 import sys
 
 
 msg = "I love computer networks!\r\n" 
 endmsg = ".\r\n" 
 
-
 mailserver = input('Enter server IP: ')
 mailPort = 1025
+
+clientName = input('Enter client name: ')
+clientEmail = input('Enter client email: ')
 
 print('\n')
 
@@ -21,12 +23,16 @@ clientSocket.connect((mailserver, mailPort))
 # initial server response after establishing TCP connection
 recv = clientSocket.recv(1024).decode() 
 print(recv) 
+
 if recv[:3] != '220': 
     print('220 reply not received from server.') 
     clientSocket.close()
     sys.exit()
 
-heloCommand = 'HELO client\r\n'
+if prompt_for_quit(clientSocket):
+    sys.exit()
+
+heloCommand = 'HELO ' + clientName + '\r\n'
 clientSocket.send(heloCommand.encode())
 
 heloCommandResponse = clientSocket.recv(1024).decode()
@@ -38,7 +44,10 @@ if (heloCommandResponse[:3] != '250'):
     clientSocket.close()
     sys.exit()
 
-mailCommand = 'MAIL FROM: <nick@gmail.com>\r\n'
+if prompt_for_quit(clientSocket):
+    sys.exit()
+
+mailCommand = 'MAIL FROM: ' + '<'+ clientEmail + '>\r\n'
 clientSocket.send(mailCommand.encode())
 
 mailCommandResponse = clientSocket.recv(1024).decode()
@@ -50,15 +59,22 @@ if (mailCommandResponse[:3] != '250'):
     clientSocket.close()
     sys.exit()
 
+if prompt_for_quit(clientSocket):
+    sys.exit()
+
 rcptMessage = 'RCPT TO: ' + '<bob@dummyserver.com>\r\n'
 clientSocket.send(rcptMessage.encode())
 
 rcptMessageResponse = clientSocket.recv(1024).decode()
 
 print(rcptMessageResponse)
+
 if (rcptMessageResponse[:3] != '250'):
     print('was not able to find recipient')
     clientSocket.close()
+    sys.exit()
+
+if prompt_for_quit(clientSocket):
     sys.exit()
 
 dataMessage = "DATA\r\n"
@@ -71,7 +87,7 @@ if (dataMessageResponse[:3] != "354"):
     clientSocket.close()
     sys.exit()
 
-# add header stuff like subject
+# add header stuff like subject in future
 clientSocket.send(msg.encode())
 clientSocket.send(endmsg.encode())
 
